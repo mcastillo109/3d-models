@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Viewer</title>
+    <script src="../shared/three.min.js"></script>
+    <script src="../shared/OBJLoader.js"></script>
+    <script src="../shared/MTLLoader.js"></script>
+    <script src="../shared/OrbitControls.js"></script>
+</head>
+
+<body>
+    <script>
+        // Create Scene
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0xffffff, 1);  // White Background
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xaaaaaa, 1.5);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+
+        // Orbit Controls for user interaction
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = false;
+        controls.minDistance = 2;
+        controls.maxDistance = 50;  // Adjusted to allow bigger zoom
+        controls.target.set(0, 1, 0);
+
+        // Load Material
+        const mtlLoader = new THREE.MTLLoader();
+        mtlLoader.load('paper-towel.mtl', function (materials) {
+            materials.preload();
+
+            // Load OBJ Model
+            const objLoader = new THREE.OBJLoader();
+            objLoader.setMaterials(materials);
+            objLoader.load('paper-towel.obj', function (object) {
+                console.log("✅ Model Loaded!");
+
+                // Center the model
+                const box = new THREE.Box3().setFromObject(object);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+
+                object.position.sub(center); // Move model to (0,0,0)
+                scene.add(object);
+
+                // Adjust camera to fit model optimally
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const fov = camera.fov * (Math.PI / 180);  // Convert to radians
+                let cameraDistance = Math.abs(maxDim / Math.sin(fov / 2));
+                camera.position.set(0, maxDim / 2, cameraDistance);
+                camera.lookAt(new THREE.Vector3(0, 0, 0));
+                controls.target.set(0, 0, 0);  // Ensure controls orbit around center
+                controls.update();
+            });
+        });
+
+        // Render loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Handle Resizing
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+
+</html>
